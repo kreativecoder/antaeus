@@ -8,9 +8,20 @@ import mu.KotlinLogging
 
 class BillingService(
     private val paymentProvider: PaymentProvider,
-    private val dal: AntaeusDal
+    private val dal: AntaeusDal,
+    private val invoiceService: InvoiceService
 ) {
     private val logger = KotlinLogging.logger { }
+
+    /**
+     * Get all pending invoices from the database
+     * and update their statuses based on response from provider.
+     *
+     */
+    fun chargePendingInvoices() {
+        invoiceService.fetchPendingInvoices()
+            .forEach { invoice -> chargeInvoice(invoice) }
+    }
 
     /**
      * Charge a single invoice, update the invoice status
@@ -19,7 +30,7 @@ class BillingService(
      * @param invoice - Invoice to be charged.
      */
     fun chargeInvoice(invoice: Invoice) {
-        logger.info("processing invoice ${invoice.id}")
+        logger.info { "processing invoice ${invoice.id}" }
 
         val charged: Boolean
         try {

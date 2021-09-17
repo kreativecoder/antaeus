@@ -81,4 +81,12 @@ class AntaeusDal(private val db: Database) {
             }
         }
     }
+
+    fun fetchPendingInvoices(): List<Invoice> {
+        return transaction(db) {
+            InvoiceTable
+                .select { InvoiceTable.status.eq(InvoiceStatus.PENDING.toString()) }
+                .map { it.toInvoice() }
+        }
+    }
 }
