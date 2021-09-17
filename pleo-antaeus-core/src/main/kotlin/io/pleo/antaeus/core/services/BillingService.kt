@@ -1,14 +1,12 @@
 package io.pleo.antaeus.core.services
 
 import io.pleo.antaeus.core.external.PaymentProvider
-import io.pleo.antaeus.data.AntaeusDal
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
 
 class BillingService(
     private val paymentProvider: PaymentProvider,
-    private val dal: AntaeusDal,
     private val invoiceService: InvoiceService
 ) {
     private val logger = KotlinLogging.logger { }
@@ -19,7 +17,7 @@ class BillingService(
      *
      */
     fun chargePendingInvoices() {
-        invoiceService.fetchPendingInvoices()
+        invoiceService.fetchPending()
             .forEach { invoice -> chargeInvoice(invoice) }
     }
 
@@ -38,10 +36,10 @@ class BillingService(
 
             if (charged) {
                 logger.info { "Invoice: ${invoice.id} payment was successful." }
-                dal.updateInvoiceStatus(invoice.id, InvoiceStatus.PAID)
+                invoiceService.updateStatus(invoice.id, InvoiceStatus.PAID)
             } else {
                 logger.info { "Payment was declined by payment provider: ${invoice.id}" }
-                dal.updateInvoiceStatus(invoice.id, InvoiceStatus.FAILED)
+                invoiceService.updateStatus(invoice.id, InvoiceStatus.FAILED)
             }
 
         } catch (ex: Exception) {

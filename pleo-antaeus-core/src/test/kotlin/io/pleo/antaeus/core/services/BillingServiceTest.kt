@@ -4,7 +4,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import io.pleo.antaeus.core.external.PaymentProvider
-import io.pleo.antaeus.data.AntaeusDal
 import io.pleo.antaeus.models.Currency
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
@@ -14,14 +13,12 @@ import java.math.BigDecimal
 
 class BillingServiceTest {
     private val paymentProvider = mockk<PaymentProvider> {}
-    private val dal = mockk<AntaeusDal> {
-        every { updateInvoiceStatus(any(), any()) } returns Unit
+    private val invoiceService = mockk<InvoiceService> {
+        every { updateStatus(any(), any()) } returns Unit
     }
-    private val invoiceService = mockk<InvoiceService> {}
 
     private val billingService = BillingService(
         paymentProvider = paymentProvider,
-        dal = dal,
         invoiceService = invoiceService
     )
 
@@ -30,7 +27,7 @@ class BillingServiceTest {
         //Arrange
         val pendingInvoice = createInvoice(InvoiceStatus.PENDING)
         val pendingInvoice2 = createInvoice(InvoiceStatus.PENDING)
-        every { invoiceService.fetchPendingInvoices() } returns listOf(pendingInvoice, pendingInvoice2)
+        every { invoiceService.fetchPending() } returns listOf(pendingInvoice, pendingInvoice2)
         every { paymentProvider.charge(any()) } returns true
 
         //Act
@@ -38,8 +35,8 @@ class BillingServiceTest {
 
         //Assert
         verify(exactly = 2) {
-            dal.updateInvoiceStatus(
-                invoiceId = or(pendingInvoice.id, pendingInvoice2.id),
+            invoiceService.updateStatus(
+                id = or(pendingInvoice.id, pendingInvoice2.id),
                 status = InvoiceStatus.PAID
             )
         }
@@ -56,8 +53,8 @@ class BillingServiceTest {
 
         //Assert
         verify {
-            dal.updateInvoiceStatus(
-                invoiceId = pendingInvoice.id,
+            invoiceService.updateStatus(
+                id = pendingInvoice.id,
                 status = InvoiceStatus.PAID
             )
         }
@@ -74,8 +71,8 @@ class BillingServiceTest {
 
         //Assert
         verify {
-            dal.updateInvoiceStatus(
-                invoiceId = pendingInvoice.id,
+            invoiceService.updateStatus(
+                id = pendingInvoice.id,
                 status = InvoiceStatus.FAILED
             )
         }
