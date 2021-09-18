@@ -28,22 +28,22 @@ class BillingService(
      * @param invoice - Invoice to be charged.
      */
     fun chargeInvoice(invoice: Invoice) {
-        logger.info { "processing invoice ${invoice.id}" }
+        logger.info { "started processing invoice(${invoice.id})" }
 
         val charged: Boolean
         try {
             charged = paymentProvider.charge(invoice)
 
             if (charged) {
-                logger.info { "Invoice: ${invoice.id} payment was successful." }
+                logger.info { "invoice(${invoice.id}) payment successful." }
                 invoiceService.updateStatus(invoice.id, InvoiceStatus.PAID)
             } else {
-                logger.info { "Payment was declined by payment provider: ${invoice.id}" }
+                logger.info { "invoice(${invoice.id}) payment failed." }
                 invoiceService.updateStatus(invoice.id, InvoiceStatus.FAILED)
             }
 
         } catch (ex: Exception) {
-            logger.error(ex) { "Error processing invoice..." }
+            logger.error(ex) { "invoice(${invoice.id}) payment error." }
             handleException(ex)
         }
     }
