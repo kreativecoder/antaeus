@@ -1,15 +1,20 @@
 package io.pleo.antaeus.core.services
 
+import io.pleo.antaeus.core.exceptions.CurrencyMismatchException
+import io.pleo.antaeus.core.exceptions.CustomerNotFoundException
+import io.pleo.antaeus.core.exceptions.NetworkException
 import io.pleo.antaeus.core.external.PaymentProvider
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
+import java.lang.Thread.sleep
 
 class BillingService(
     private val paymentProvider: PaymentProvider,
     private val invoiceService: InvoiceService
 ) {
     private val logger = KotlinLogging.logger { }
+    private val MAX_RETRIES = 3
 
     /**
      * Get all pending invoices from the database
@@ -27,7 +32,7 @@ class BillingService(
      *
      * @param invoice - Invoice to be charged.
      */
-    fun chargeInvoice(invoice: Invoice) {
+    fun chargeInvoice(invoice: Invoice, retryCount: Int = 0) {
         logger.info { "started processing invoice(${invoice.id})" }
 
         val charged: Boolean
@@ -44,14 +49,42 @@ class BillingService(
 
         } catch (ex: Exception) {
             logger.error(ex) { "invoice(${invoice.id}) payment error." }
-            handleException(ex)
+            handleException(ex, invoice, retryCount)
         }
     }
 
     /**
      * Exception handling logic goes here
      */
-    private fun handleException(exception: Exception) {
-        //todo handle known exceptions based on business logic.
+    private fun handleException(exception: Exception, invoice: Invoice, retryCount: Int) {
+        when (exception) {
+            is CustomerNotFoundException -> {
+                //this error should be reported first, an action can be performed based on business logic
+                // e.g create customer, notify customer etc
+                logger.error { "customer(${invoice.customerId}) not found on payment provider." }
+            }
+            is CurrencyMismatchException -> {
+                // we can minimize the rate of this error by confirming that the currency on invoice
+                // is same as customers currency, if this still occurs, then a business rule determines
+                // what is done next.
+                logger.error { "customer(${invoice.customerId}) invoice currency does not match on payment provider." }
+            }
+            is NetworkException -> {
+                // we'll retry this right away, on a prod environment however,
+                // the mechanism for handling this will be different
+                if (retryCount < MAX_RETRIES) {
+                    logger.info { "retrying invoice(${invoice.id}) due to network error." }
+                    sleep(60000)
+                    chargeInvoice(invoice, retryCount + 1)
+                } else {
+                    logger.error { "could not retry invoice(${invoice.id}), max retries reached." }
+                }
+
+            }
+            else -> {
+                //this is fatal, an error we don't understand...proper logging and alerting will work here
+                logger.error { "unknown error occurred charging invoice(${invoice.id})" }
+            }
+        }
     }
 }
