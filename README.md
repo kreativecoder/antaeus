@@ -86,3 +86,26 @@ The code given is structured as follows. Feel free however to modify the structu
 * [Sqlite3](https://sqlite.org/index.html) - Database storage engine
 
 Happy hacking 😁!
+
+## Thoughts
+
+"Make it work, make it right, make it fast" has been one of my guiding principles of development, it allows me focus 
+on solving the problem and building my optimizations on top of that. Following this, the first solution I thought of was 
+how to charge a single invoice, charge multiple and make this efficient?
+
+### Assumptions
+
+- Only one instance of the app will be used in billing the invoices, hence concurrency and related problems were not put into consideration.
+- There'll only be a few hundred invoices to process, anything more than this, then the fetching will be batched not to overload the system.
+
+### Improvements
+
+- I probably didn't write idiomatic kotlin code, this is something I'm getting better in as I do more Kotlin projects.
+- Testing, I added a few unit tests, but no integration tests to confirm all the part of the system are working as expected.
+- The scheduler for the billing is in the core, I'll separate that into its own module and eventually a service to separate concerns and finer grain of control.
+- The cron is static and whilst it can be changed via environment variable to any time, this would not work should we decide to have different schedule for payment for customers.
+- Currency converter to reduce the rate of CurrencyMismatchException, implement a callback from the provider for currency change events
+- Retrying is instant, this will not play out in a prod environment, a cool off period to allow systems to recover will be ideal.
+
+### Libraries
+* [Quartz-Scheduler](https://www.quartz-scheduler.org/) - Job scheduling library
