@@ -12,4 +12,6 @@ docker run \
   --interactive \
   --tty \
   --volume pleo-antaeus-build-cache:/root/.gradle \
+  --env PAYMENT_MAX_RETRIES=3 \
+  --env BILLING_SCHEDULER_CRON='0 0/1 * 1/1 * ? *' \
   pleo-antaeus

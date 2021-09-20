@@ -14,7 +14,7 @@ class BillingService(
     private val invoiceService: InvoiceService
 ) {
     private val logger = KotlinLogging.logger { }
-    private val MAX_RETRIES = 3
+    private val maxRetries = System.getenv().getOrDefault("PAYMENT_MAX_RETRIES", 3.toString());
 
     /**
      * Get all pending invoices from the database
@@ -23,6 +23,7 @@ class BillingService(
      */
     fun chargePendingInvoices() {
         invoiceService.fetchPending()
+            .filter { it.status == InvoiceStatus.PENDING }
             .forEach { invoice -> chargeInvoice(invoice) }
     }
 
@@ -60,7 +61,7 @@ class BillingService(
         when (exception) {
             is CustomerNotFoundException -> {
                 //this error should be reported first, an action can be performed based on business logic
-                // e.g create customer, notify customer etc
+                // e.g. create customer, notify customer etc
                 logger.error { "customer(${invoice.customerId}) not found on payment provider." }
             }
             is CurrencyMismatchException -> {
@@ -72,7 +73,7 @@ class BillingService(
             is NetworkException -> {
                 // we'll retry this right away, on a prod environment however,
                 // the mechanism for handling this will be different
-                if (retryCount < MAX_RETRIES) {
+                if (retryCount < maxRetries.toInt()) {
                     logger.info { "retrying invoice(${invoice.id}) due to network error." }
                     sleep(60000)
                     chargeInvoice(invoice, retryCount + 1)

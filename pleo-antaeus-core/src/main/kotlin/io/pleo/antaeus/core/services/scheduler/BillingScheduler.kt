@@ -9,6 +9,7 @@ class BillingScheduler(private val billingService: BillingService) {
     private val logger = KotlinLogging.logger { }
 
     private val scheduler: Scheduler = StdSchedulerFactory.getDefaultScheduler()
+    private val cron = System.getenv().getOrDefault("BILLING_SCHEDULER_CRON", "0 0 8 1 1/1 ? *")
 
     init {
         scheduler.context["billingService"] = billingService
@@ -38,8 +39,7 @@ class BillingScheduler(private val billingService: BillingService) {
 
     private fun createTrigger(): Trigger {
         return TriggerBuilder.newTrigger()
-//            .withSchedule(CronScheduleBuilder.cronSchedule("0 0 8 1 1/1 ? *"))
-            .withSchedule(CronScheduleBuilder.cronSchedule("0 0/1 * 1/1 * ? *")) //for testing
+            .withSchedule(CronScheduleBuilder.cronSchedule(cron))
             .build()
     }
 }

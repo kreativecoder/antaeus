@@ -69,7 +69,7 @@ class AntaeusRest(
                         }
 
                         // URL: /rest/v1/invoices/{:id}/charge
-                        get(":id") {
+                        get(":id/charge") {
                             val invoice = invoiceService.fetch(it.pathParam("id").toInt())
                             it.json(billingService.chargeInvoice(invoice))
                         }
