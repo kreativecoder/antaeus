@@ -107,5 +107,9 @@ how to charge a single invoice, charge multiple and make this efficient?
 - Currency converter to reduce the rate of CurrencyMismatchException, implement a callback from the provider for currency change events
 - Retrying is instant, this will not play out in a prod environment, a cool off period to allow systems to recover will be ideal.
 
+### Time Spent
+
+About 6hrs spread over 3 days due to availability.
+
 ### Libraries
 * [Quartz-Scheduler](https://www.quartz-scheduler.org/) - Job scheduling library
