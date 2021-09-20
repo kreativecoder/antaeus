@@ -3,15 +3,19 @@ package io.pleo.antaeus.core.services
 import io.pleo.antaeus.core.exceptions.CurrencyMismatchException
 import io.pleo.antaeus.core.exceptions.CustomerNotFoundException
 import io.pleo.antaeus.core.exceptions.NetworkException
+import io.pleo.antaeus.core.external.CurrencyConverter
 import io.pleo.antaeus.core.external.PaymentProvider
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
+import io.pleo.antaeus.models.Money
 import mu.KotlinLogging
 import java.lang.Thread.sleep
 
 class BillingService(
     private val paymentProvider: PaymentProvider,
-    private val invoiceService: InvoiceService
+    private val invoiceService: InvoiceService,
+    private val customerService: CustomerService,
+    private val currencyConverter: CurrencyConverter
 ) {
     private val logger = KotlinLogging.logger { }
     private val maxRetries = System.getenv().getOrDefault("PAYMENT_MAX_RETRIES", 3.toString());
@@ -69,6 +73,7 @@ class BillingService(
                 // is same as customers currency, if this still occurs, then a business rule determines
                 // what is done next.
                 logger.error { "customer(${invoice.customerId}) invoice currency does not match on payment provider." }
+                handleCurrencyMismatch(invoice)
             }
             is NetworkException -> {
                 // we'll retry this right away, on a prod environment however,
@@ -88,4 +93,19 @@ class BillingService(
             }
         }
     }
+
+    /**
+     * Converts the currency in
+     */
+    private fun handleCurrencyMismatch(invoice: Invoice) {
+        val customer = customerService.fetch(invoice.customerId)
+        if (customer.currency != invoice.amount.currency) {
+            logger.info { "converting ${invoice.amount.value} in invoice(${invoice.id}) to {${customer.currency}}" }
+            val convertedAmount =
+                currencyConverter.convert(invoice.amount.value, invoice.amount.currency, customer.currency)
+
+            chargeInvoice(invoice.copy(amount = Money(convertedAmount, customer.currency)))
+        }
+    }
+
 }
